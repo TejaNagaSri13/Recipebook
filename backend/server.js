@@ -1,56 +1,72 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cors from "cors";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+
+// 🔹 Load environment variables
+dotenv.config();
+
+// 🔹 Import Models
+import UserModel from "./models/User.js";
+import Recipe from "./models/Recipe.js";
 
 const app = express();
-const router = express.Router();
-app.use("/", router);
 const PORT = process.env.PORT || 3000;
-const SECRET_KEY = "supersecretkey";// Change this in production
 
+// 🔹 Middleware
 app.use(express.json());
 app.use(cors());
 
-// ✅ Check MongoDB Connection
-mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log("✅ DB connected successfully.."))
-    .catch((err) => console.log("❌ DB connection error: ", err));
+// 🔹 MongoDB Connection
+mongoose
+  .connect(process.env.MONGO_URL)
+  .then(() => console.log("✅ MongoDB connected successfully"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Home Page
-app.get('/', (req, res) => {
-    res.send("<h1 align=center>Welcome to the Recipe Book API</h1>");
+// 🔹 Home Route
+app.get("/", (req, res) => {
+  res.send("<h1 align='center'>Welcome to the Recipe Book API</h1>");
 });
 
-//register page
-router.post("/register", async (req, res) => {
+// ================= REGISTER =================
+app.post("/register", async (req, res) => {
   try {
-    const { email, username, password } = req.body; // ✅ Include email
+    const { email, username, password } = req.body;
 
-    const userExists = await UserModel.findOne({ email }); // ✅ Check by email
+    if (!email || !username || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const userExists = await UserModel.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new UserModel({ email, username, password: hashedPassword }); // ✅ Save email
-    await newUser.save();
 
+    const newUser = new UserModel({
+      email,
+      username,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
     res.json({ message: "User registered successfully" });
+
   } catch (error) {
+    console.error("Register error:", error);
     res.status(500).json({ message: "Error registering user" });
   }
 });
 
-
-//login page
-router.post("/login", async (req, res) => {
+// ================= LOGIN =================
+app.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body; // ✅ Use email instead of username
-    const user = await UserModel.findOne({ email }); // ✅ Search by email
+    const { email, password } = req.body;
 
+    const user = await UserModel.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
@@ -60,8 +76,17 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    res.json({ token, userID: user._id });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      token,
+      userID: user._id,
+      username: user.username,
+    });
 
   } catch (error) {
     console.error("Login error:", error);
@@ -69,10 +94,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-
-// 📌 **Middleware: Verify JWT Token**
-export const verifyToken = (req, res, next) => {
+// ================= JWT MIDDLEWARE =================
+const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -81,35 +106,37 @@ export const verifyToken = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ message: "Invalid Token" });
+      return res.status(403).json({ message: "Invalid token" });
     }
     req.user = decoded;
     next();
   });
 };
 
-// 📌 **Add Recipe API (Protected)**
-app.post('/recipes', verifyToken, async (req, res) => {
-    try {
-        const recipe = new Recipe(req.body);
-        await recipe.save();
-        res.json({ message: "Recipe Added Successfully!" });
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ message: "Error adding recipe" });
-    }
+// ================= ADD RECIPE (PROTECTED) =================
+app.post("/recipes", verifyToken, async (req, res) => {
+  try {
+    const recipe = new Recipe(req.body);
+    await recipe.save();
+    res.json({ message: "Recipe added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error adding recipe" });
+  }
 });
 
-// 📌 **Get All Recipes API**
-app.get('/recipes', async (req, res) => {
-    try {
-        const recipes = await Recipe.find();
-        res.json(recipes);
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ message: "Error fetching recipes" });
-    }
+// ================= GET ALL RECIPES =================
+app.get("/recipes", async (req, res) => {
+  try {
+    const recipes = await Recipe.find().sort({ createdAt: -1 });
+    res.json(recipes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error fetching recipes" });
+  }
 });
 
-// 📌 **Start Server**
-app.listen(PORT, () => console.log(`🚀 Server is running on port: ${PORT}`));
+// ================= START SERVER =================
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
