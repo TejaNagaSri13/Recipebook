@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useCookies } from "react-cookie";
 import { useNavigate } from "react-router-dom";
-import "./Auth.css"; 
+import "./Auth.css";
+
+const API_URL = "https://recipebook-nlcw.onrender.com"; 
+// 👉 change to http://localhost:3000 for local testing
 
 export const Auth = ({ setIsLoggedIn }) => {
   return (
@@ -13,8 +16,9 @@ export const Auth = ({ setIsLoggedIn }) => {
   );
 };
 
+// ================= LOGIN =================
 const Login = ({ setIsLoggedIn }) => {
-  const [_, setCookies] = useCookies(["token"]);
+  const [, setCookies] = useCookies(["token"]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -22,36 +26,63 @@ const Login = ({ setIsLoggedIn }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (!email || !password) {
+      alert("Please fill all fields");
+      return;
+    }
+
     try {
-      const response = await axios.post("https://recipebook-nlcw.onrender.com/login", {
+      const response = await axios.post(`${API_URL}/login`, {
         email,
         password,
       });
 
-      console.log("Response from API:", response.data);  // Debug API response
+      setCookies("token", response.data.token, {
+        path: "/",
+        sameSite: "strict",
+        secure: true, // set false if testing on localhost
+      });
 
-      setCookies("token", response.data.token, { path: "/" });
+      localStorage.setItem("userID", response.data.userID);
       localStorage.setItem("username", response.data.username);
+
       setIsLoggedIn(true);
       navigate("/");
+
     } catch (error) {
-      console.log("Login Error:", error.response ? error.response.data : error.message);
-      alert(error.response ? error.response.data.message : "Invalid credentials. Please try again.");
+      alert(
+        error.response?.data?.message ||
+        "Invalid credentials. Please try again."
+      );
     }
-};
+  };
 
   return (
     <div className="auth-container">
       <form onSubmit={handleSubmit}>
         <h2>Login</h2>
-        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
         <button type="submit">Login</button>
       </form>
     </div>
   );
 };
 
+// ================= REGISTER =================
 const Register = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -59,16 +90,30 @@ const Register = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!email || !username || !password) {
+      alert("Please fill all fields");
+      return;
+    }
+
     try {
-      await axios.post("https://recipebook-nlcw.onrender.com/register", {
+      await axios.post(`${API_URL}/register`, {
         email,
         username,
         password,
       });
-      alert("Registration Completed! Now login.");
+
+      alert("Registration successful! Please login.");
+
+      setEmail("");
+      setUsername("");
+      setPassword("");
+
     } catch (error) {
-      console.error(error);
-      alert("Error registering user.");
+      alert(
+        error.response?.data?.message ||
+        "Error registering user"
+      );
     }
   };
 
@@ -76,9 +121,28 @@ const Register = () => {
     <div className="auth-container">
       <form onSubmit={handleSubmit}>
         <h2>Register</h2>
-        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
         <button type="submit">Register</button>
       </form>
     </div>
