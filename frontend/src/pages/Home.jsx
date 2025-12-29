@@ -1,125 +1,89 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGetUserID } from "../hooks/useGetUserID";
 import axios from "axios";
-import "./Home.css"; // Import the CSS file
+import "./Home.css";
+
+const API_URL = "https://recipebook-nlcw.onrender.com";
+// use http://localhost:3000 for local testing
 
 const Home = () => {
   const [recipes, setRecipes] = useState([]);
-  const [savedRecipes, setSavedRecipes] = useState([]);
   const navigate = useNavigate();
-  const userID = useGetUserID();
 
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const response = await axios.get("https://recipebook-nlcw.onrender.com/recipes");
+        const response = await axios.get(`${API_URL}/recipes`);
         setRecipes(response.data);
-      } catch (err) {
-        console.log(err);
-      }
-    };
-
-    const fetchSavedRecipes = async () => {
-      try {
-        const response = await axios.get(
-          `https://recipebook-nlcw.onrender.com/recipes/savedRecipes/ids/${userID}`
-        );
-        setSavedRecipes(response.data.savedRecipes);
-      } catch (err) {
-        console.log(err);
+      } catch (error) {
+        console.error("Error fetching recipes:", error);
       }
     };
 
     fetchRecipes();
-    fetchSavedRecipes();
   }, []);
-
-  const saveRecipe = async (recipeID) => {
-    try {
-      const response = await axios.put("https://recipebook-nlcw.onrender.com/recipes", {
-        recipeID,
-        userID,
-      });
-      setSavedRecipes(response.data.savedRecipes);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const isRecipeSaved = (id) => savedRecipes.includes(id);
 
   return (
     <div className="home-container">
-      {/* Header Section */}
+
+      {/* Header */}
       <div className="title-img">
-        <img src="/image1.jpeg" className="img-fluid1" alt="..." />
+        <img src="/image1.jpeg" className="img-fluid1" alt="Recipe Banner" />
       </div>
-       <h1>Welcome to Recipe Book !</h1>
-        <p>Discover delicious recipes and save your favorites!</p>
 
-
-      {/* About Section */}
-      <section className="about-section">
-        <h2>About Us</h2>
-        <p><span>✔</span> <strong>A Culinary Collection</strong> – Showcases a diverse range of recipes, cooking techniques, and flavors.</p>
-        <p><span>✔</span> <strong>Step-by-Step Guidance</strong> – Provides clear instructions, ingredient lists, and expert tips.</p>
-        <p><span>✔</span> <strong>For Every Cook</strong> – Ideal for both home cooks and professional chefs.</p>
-        <p><span>✔</span> <strong>Cultural Essence</strong> – Reflects heritage, traditions, and creativity in every dish.</p>
-        <p><span>✔</span> <strong>Fusion & Classics</strong> – Features both traditional favorites and modern, innovative recipes.</p>
-        <p><span>✔</span> <strong>Inspiration & Exploration</strong> – Encourages experimenting with new flavors and cooking styles.</p>
-        <p><span>✔</span> <strong>Your Kitchen Companion</strong> – An essential guide to elevate your culinary journey.</p>
-      </section>
+      <h1>Welcome to Recipe Book!</h1>
+      <p>Discover delicious recipes and cooking ideas.</p>
 
       {/* Recipes Section */}
       <section className="recipes-section">
         <h2>Recipes</h2>
+
         <div className="recipes-container">
-          {recipes.map((recipe) => (
-            <div key={recipe._id} className="recipe-card">
-              <h2>{recipe.name}</h2>
-              <button
-                onClick={() => saveRecipe(recipe._id)}
-                disabled={isRecipeSaved(recipe._id)}
-              >
-                {isRecipeSaved(recipe._id) ? "Saved" : "Save"}
-              </button>
-              <div className="instructions">
+          {recipes.length === 0 ? (
+            <p>No recipes available.</p>
+          ) : (
+            recipes.map((recipe) => (
+              <div key={recipe._id} className="recipe-card">
+                <h3>{recipe.name}</h3>
+
+                {recipe.imageUrl && (
+                  <img src={recipe.imageUrl} alt={recipe.name} />
+                )}
+
+                <p><strong>Description:</strong> {recipe.description}</p>
+
+                <h4>Ingredients:</h4>
+                <ul>
+                  {recipe.ingredients.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+
+                <h4>Instructions:</h4>
                 <p>{recipe.instructions}</p>
               </div>
-              <img src={recipe.imageUrl} alt={recipe.name} />
-              <p>Cooking Time: {recipe.cookingTime} minutes</p>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
-      {/* Categories Section */}
+      {/* Categories */}
       <div className="home-nav-cat">
         <h2>Category</h2>
         <div className="flex-container">
-          <div className="category-item" onClick={() => navigate('/food')}>
-            <p>Salads</p>
-          </div>
-          <div className="category-item" onClick={() => navigate('/food2')}>
-            <p>Snacks</p>
-          </div>
-          <div className="category-item" onClick={() => navigate('/food4')}>
-            <p>Breakfast</p>
-          </div>
-          <div className="category-item" onClick={() => navigate('/food3')}>
-            <p>Desserts</p>
-          </div>
+          <div className="category-item" onClick={() => navigate("/food")}>Salads</div>
+          <div className="category-item" onClick={() => navigate("/food2")}>Snacks</div>
+          <div className="category-item" onClick={() => navigate("/food4")}>Breakfast</div>
+          <div className="category-item" onClick={() => navigate("/food3")}>Desserts</div>
         </div>
       </div>
 
-
-      {/* Contact Section */}
+      {/* Contact */}
       <section className="contact-section">
         <h2>Contact Us</h2>
         <p>📞 Phone: +91 9390188535</p>
         <p>📍 Location: Tanuku, India</p>
-        <p>📧 Email: tejsri3@gmail.com</p>
+        <p>📧 Email: tejanagasri3@gmail.com</p>
       </section>
     </div>
   );
